@@ -1,0 +1,67 @@
+import time
+import random
+import logging
+
+# ========================= CONFIGURATION =========================
+# Physical Constants (Metric)
+NORMAL_FLOW_A = 250.0      # L/s
+MAX_CAPACITY_A = 450.0     # L/s
+THRESHOLD_PRESSURE = 1.8   # bar
+CHEMICAL_DOSE_RATE = 0.5   # kg per 1000L
+DISSOLVE_SIM_TIME = 1.5    # Seconds (Simulated delay)
+
+logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+logger = logging.getLogger(__name__)
+
+class DrainageSystem:
+    def __init__(self):
+        self.flow_a = NORMAL_FLOW_A
+        self.pressure_a = 0.8
+        self.is_clotted = False
+        self.accumulated_waste = 0.0
+        self.flow_b = 0.0
+        self.flow_c = 0.0
+
+    def update_sensors(self):
+        """Simulate real-time sensor fluctuations."""
+        if random.random() < 0.25:  # 25% chance of a clot event
+            self.flow_a = max(70.0, self.flow_a - random.uniform(40, 90))
+            self.pressure_a = min(3.5, self.pressure_a + random.uniform(0.3, 0.7))
+            self.accumulated_waste += (NORMAL_FLOW_A - self.flow_a) * 5
+        else:
+            # System stabilization
+            self.flow_a = NORMAL_FLOW_A + random.uniform(-15, 15)
+            self.pressure_a = 0.7 + random.uniform(0, 0.3)
+            self.flow_b, self.flow_c = 0.0, 0.0
+
+    def handle_clot(self):
+        """Logic for chemical intervention and flow redirection."""
+        dose = (self.accumulated_waste / 1000) * CHEMICAL_DOSE_RATE
+        logger.warning(f"🚨 CLOT DETECTED (P={self.pressure_a:.2f} bar). Injecting {dose:.2f}kg chemicals.")
+        
+        time.sleep(DISSOLVE_SIM_TIME) # Simulate reaction time
+        
+        # Calculate redirection: Redirect 90% of the blocked volume to B and C
+        excess = max(0, NORMAL_FLOW_A - self.flow_a)
+        self.flow_b = excess / 2
+        self.flow_c = excess / 2
+        
+        logger.info(f"✅ Recovery Active: Redirecting {self.flow_b:.1f} L/s to B and C.")
+        # Reset state
+        self.accumulated_waste = 0
+        self.is_clotted = False
+
+    def monitor(self, cycles=20):
+        logger.info("Industrial Drainage Monitor Online.")
+        for i in range(cycles):
+            self.update_sensors()
+            print(f"Cycle {i+1:02d} | A: {self.flow_a:5.1f} L/s | P: {self.pressure_a:.2f} bar | B: {self.flow_b:4.1f} | C: {self.flow_c:4.1f}")
+            
+            if self.pressure_a > THRESHOLD_PRESSURE or self.flow_a < (0.65 * NORMAL_FLOW_A):
+                self.handle_clot()
+            
+            time.sleep(0.5)
+
+if __name__ == "__main__":
+    system = DrainageSystem()
+    system.monitor()
